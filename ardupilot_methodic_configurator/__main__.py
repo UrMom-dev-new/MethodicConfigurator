@@ -41,7 +41,12 @@ from ardupilot_methodic_configurator.backend_filesystem_migration import (
 )
 from ardupilot_methodic_configurator.backend_filesystem_program_settings import ProgramSettings
 from ardupilot_methodic_configurator.backend_flightcontroller import DEVICE_FC_PARAM_FROM_FILE, FlightController
-from ardupilot_methodic_configurator.backend_internet import verify_and_open_url, webbrowser_open_url
+from ardupilot_methodic_configurator.backend_internet import (
+    external_network_access_enabled,
+    set_external_network_access_allowed,
+    verify_and_open_url,
+    webbrowser_open_url,
+)
 from ardupilot_methodic_configurator.common_arguments import add_common_arguments
 from ardupilot_methodic_configurator.data_model_par_dict import ParamFileError, ParDict
 from ardupilot_methodic_configurator.data_model_parameter_editor import ParameterEditor
@@ -182,7 +187,19 @@ def check_updates(state: ApplicationState) -> bool:
         True if the application should exit due to updates, False otherwise
 
     """
-    if not state.args.skip_check_for_updates and check_for_software_updates():
+    if state.args.skip_check_for_updates:
+        logging_info(_("Skipping software update check."))
+        return False
+
+    if getattr(state.args, "check_for_updates", False) is not True:
+        logging_info(_("Skipping software update check because update checks are opt-in."))
+        return False
+
+    if not external_network_access_enabled():
+        logging_warning(_("Software update check requested, but external network calls are disabled."))
+        return False
+
+    if check_for_software_updates():
         logging_info(_("Will now exit the old software version."))
         return True
     return False
@@ -483,7 +500,8 @@ def should_open_firmware_documentation(flight_controller: FlightController) -> b
 
     """
     return (
-        bool(ProgramSettings.get_setting("auto_open_doc_in_browser"))
+        external_network_access_enabled()
+        and bool(ProgramSettings.get_setting("auto_open_doc_in_browser"))
         and flight_controller.info.firmware_type != _("Unknown")
         and flight_controller.info.firmware_type != ""
     )
@@ -691,6 +709,7 @@ def main() -> None:
     for each major step.
     """
     args = create_argument_parser().parse_args()
+    set_external_network_access_allowed(getattr(args, "allow_external_network_calls", False) or None)
 
     # Register plugins early, before any UI creation
     register_plugins()
@@ -715,7 +734,7 @@ def main() -> None:
         if popup_window:
             popup_window.root.mainloop()
 
-    if bool(ProgramSettings.get_setting("auto_open_doc_in_browser")):
+    if external_network_access_enabled() and bool(ProgramSettings.get_setting("auto_open_doc_in_browser")):
         display_first_use_documentation()
 
     initialize_flight_controller(state)

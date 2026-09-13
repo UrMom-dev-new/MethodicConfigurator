@@ -14,7 +14,7 @@ from tkinter import ttk
 
 from ardupilot_methodic_configurator import _
 from ardupilot_methodic_configurator.backend_filesystem_program_settings import ProgramSettings
-from ardupilot_methodic_configurator.backend_internet import webbrowser_open_url
+from ardupilot_methodic_configurator.backend_internet import external_network_access_enabled, webbrowser_open_url
 from ardupilot_methodic_configurator.data_model_parameter_editor import ParameterEditor
 from ardupilot_methodic_configurator.frontend_tkinter_rich_text import get_widget_font_family_and_size
 from ardupilot_methodic_configurator.frontend_tkinter_show import show_tooltip
@@ -55,7 +55,9 @@ class DocumentationFrame:
         self.documentation_frame: ttk.LabelFrame
         self.documentation_labels: dict[str, ttk.Label] = {}
         self.mandatory_level: ttk.Progressbar
-        self.auto_open_var = tk.BooleanVar(value=bool(ProgramSettings.get_setting("auto_open_doc_in_browser")))
+        self.auto_open_var = tk.BooleanVar(
+            value=external_network_access_enabled() and bool(ProgramSettings.get_setting("auto_open_doc_in_browser"))
+        )
         self._create_documentation_frame()
 
     def _create_documentation_frame(self) -> None:
@@ -101,13 +103,17 @@ class DocumentationFrame:
             text=_("Automatically open documentation links in browser"),
             variable=self.auto_open_var,
             command=lambda: ProgramSettings.set_setting("auto_open_doc_in_browser", self.auto_open_var.get()),
+            state="normal" if external_network_access_enabled() else "disabled",
         )
+        auto_open_tooltip = _(
+            "Automatically open all the above documentation links in a browser\n"
+            "whenever the current intermediate parameter file changes"
+        )
+        if not external_network_access_enabled():
+            auto_open_tooltip = _("External network calls are disabled; browser documentation will not open.")
         show_tooltip(
             auto_open_checkbox,
-            _(
-                "Automatically open all the above documentation links in a browser\n"
-                "whenever the current intermediate parameter file changes"
-            ),
+            auto_open_tooltip,
         )
         auto_open_checkbox.pack(side=tk.LEFT, expand=False)
 
@@ -117,7 +123,7 @@ class DocumentationFrame:
             show_tooltip(self.documentation_frame, tooltip_text, position_below=False)
 
     def get_auto_open_documentation_in_browser(self) -> bool:
-        return self.auto_open_var.get()
+        return external_network_access_enabled() and self.auto_open_var.get()
 
     def refresh_documentation_labels(self) -> None:
         frame_title = self.parameter_editor.get_documentation_frame_title()

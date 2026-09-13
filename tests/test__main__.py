@@ -63,6 +63,8 @@ def mock_args() -> MagicMock:
     """Fixture providing realistic mock arguments for application startup."""
     args = MagicMock(spec=argparse.Namespace)
     args.loglevel = "INFO"
+    args.allow_external_network_calls = False
+    args.check_for_updates = False
     args.skip_check_for_updates = False
     args.vehicle_dir = "/test/vehicle/dir"
     args.device = DEVICE_FC_PARAM_FROM_FILE
@@ -181,6 +183,23 @@ class TestApplicationStartup:
             assert should_exit is False
             mock_check.assert_not_called()
 
+    def test_user_starts_without_update_check_by_default(self, application_state: ApplicationState) -> None:
+        """
+        User starts without sharing data with update services by default.
+
+        GIVEN: A user starts the application without update flags
+        WHEN: Startup reaches the update step
+        THEN: No update network check is attempted
+        """
+        application_state.args.skip_check_for_updates = False
+        application_state.args.check_for_updates = False
+
+        with patch("ardupilot_methodic_configurator.__main__.check_for_software_updates") as mock_check:
+            should_exit = check_updates(application_state)
+
+            assert should_exit is False
+            mock_check.assert_not_called()
+
     def test_user_receives_update_notification_when_new_version_available(self, application_state: ApplicationState) -> None:
         """
         User is notified when a software update is available and application exits gracefully.
@@ -191,9 +210,11 @@ class TestApplicationStartup:
         """
         # Arrange: Updates are available
         application_state.args.skip_check_for_updates = False
+        application_state.args.check_for_updates = True
 
         with (
             patch("ardupilot_methodic_configurator.__main__.logging_basicConfig"),
+            patch("ardupilot_methodic_configurator.__main__.external_network_access_enabled", return_value=True),
             patch("ardupilot_methodic_configurator.__main__.check_for_software_updates", return_value=True),
         ):
             # Act: User starts outdated application
@@ -201,6 +222,29 @@ class TestApplicationStartup:
 
             # Assert: User informed and application exits
             assert should_exit is True
+
+    def test_update_check_request_does_not_bypass_external_network_setting(
+        self, application_state: ApplicationState
+    ) -> None:
+        """
+        Requested update checks still honor local-only mode.
+
+        GIVEN: A user requests an update check
+        AND: External network calls are disabled
+        WHEN: Startup reaches the update step
+        THEN: No update network check is attempted
+        """
+        application_state.args.skip_check_for_updates = False
+        application_state.args.check_for_updates = True
+
+        with (
+            patch("ardupilot_methodic_configurator.__main__.external_network_access_enabled", return_value=False),
+            patch("ardupilot_methodic_configurator.__main__.check_for_software_updates") as mock_check,
+        ):
+            should_exit = check_updates(application_state)
+
+            assert should_exit is False
+            mock_check.assert_not_called()
 
     def test_user_proceeds_normally_when_application_is_current(self, application_state: ApplicationState) -> None:
         """
@@ -212,8 +256,10 @@ class TestApplicationStartup:
         """
         # Arrange: No updates needed
         application_state.args.skip_check_for_updates = False
+        application_state.args.check_for_updates = True
 
         with (
+            patch("ardupilot_methodic_configurator.__main__.external_network_access_enabled", return_value=True),
             patch("ardupilot_methodic_configurator.__main__.check_for_software_updates", return_value=False),
         ):
             # Act: User starts current application
@@ -648,6 +694,8 @@ class TestArgumentParser:
 
         # Test with minimal arguments to ensure it works
         test_args = parser.parse_args(["--skip-check-for-updates"])
+        assert test_args.allow_external_network_calls is False
+        assert test_args.check_for_updates is False
         assert test_args.skip_check_for_updates is True
 
 
@@ -1158,6 +1206,26 @@ class TestComponentEditorHelperFunctions:
 
             # Assert: Should open documentation
             assert result is True
+
+    def test_should_not_open_firmware_documentation_without_external_network_opt_in(self) -> None:
+        """
+        Auto-open documentation does not bypass local-only mode.
+
+        GIVEN: Auto-open documentation is enabled in settings
+        AND: External network calls are disabled
+        WHEN: Documentation opening decision is made
+        THEN: Function should return False to keep startup local-only
+        """
+        mock_fc = MagicMock()
+        mock_fc.info.firmware_type = "CubeOrange"
+
+        with (
+            patch("ardupilot_methodic_configurator.__main__.ProgramSettings.get_setting", return_value=True),
+            patch("ardupilot_methodic_configurator.__main__.external_network_access_enabled", return_value=False),
+        ):
+            result = should_open_firmware_documentation(mock_fc)
+
+            assert result is False
 
     def test_should_open_firmware_documentation_when_disabled(self) -> None:
         """
@@ -1967,6 +2035,8 @@ class TestEditorBackupAndMainOrchestration:
         ):
             mock_parser.return_value.parse_args.return_value = argparse.Namespace(
                 loglevel="INFO",
+                allow_external_network_calls=False,
+                check_for_updates=False,
                 skip_check_for_updates=False,
                 vehicle_dir=None,
                 vehicle_type=None,

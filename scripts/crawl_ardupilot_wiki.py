@@ -17,6 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import logging
+import os
 import time
 from os import environ as os_environ
 from urllib.parse import urljoin, urlparse
@@ -26,6 +27,8 @@ from bs4 import BeautifulSoup, Tag
 
 # Define the URL where to start crawling
 URL = "https://ardupilot.org/ardupilot/"
+ALLOW_EXTERNAL_NETWORK_ENV_VAR = "ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK"
+_EXTERNAL_NETWORK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 USERNAME = "your_username"  # Replace with actual username if needed
 PASSWORD = ""  # Replace with actual password if needed
 
@@ -64,6 +67,12 @@ URL_BLACKLIST = [
 ]
 
 URL_BLACKLIST_PREFIXES = ["https://docs.cubepilot.org/user-guides/~/changes/", "zh-hans", "doc.cuav.net/tutorial"]
+
+
+def external_network_access_enabled() -> bool:
+    """Return whether outbound network access has been explicitly enabled for this script."""
+    value = os.environ.get(ALLOW_EXTERNAL_NETWORK_ENV_VAR, "")
+    return value.strip().lower() in _EXTERNAL_NETWORK_TRUE_VALUES
 
 
 # pylint: disable=duplicate-code
@@ -162,6 +171,10 @@ def find_all_links(soup: BeautifulSoup, current_url: str, visited_urls: set[str]
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    if not external_network_access_enabled():
+        logging.error("External network calls are disabled. Set %s=1 to crawl documentation.", ALLOW_EXTERNAL_NETWORK_ENV_VAR)
+        return
+
     start_time = time.time()
 
     visited_urls = set()

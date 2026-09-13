@@ -467,14 +467,13 @@ def test_update_manager_add_argparse_arguments() -> None:
     parser = ArgumentParser()
     result = UpdateManager.add_argparse_arguments(parser)
 
-    # Check that the parser has our argument
-    found = False
+    # Check that the parser has our arguments
+    found = {"allow_external_network_calls": False, "check_for_updates": False, "skip_check_for_updates": False}
     for action in result._actions:
-        if action.dest == "skip_check_for_updates":
-            found = True
-            break
+        if action.dest in found:
+            found[action.dest] = True
 
-    assert found is True
+    assert all(found.values())
 
 
 def test_update_manager_check_and_update_older_version(update_manager) -> None:  # pylint: disable=redefined-outer-name

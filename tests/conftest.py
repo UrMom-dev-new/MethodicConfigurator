@@ -32,6 +32,7 @@ from test_data_model_vehicle_components_common import SAMPLE_DOC_DICT, Component
 from ardupilot_methodic_configurator.backend_filesystem import LocalFilesystem
 from ardupilot_methodic_configurator.backend_filesystem_vehicle_components import VehicleComponents
 from ardupilot_methodic_configurator.backend_flightcontroller import FlightController
+from ardupilot_methodic_configurator.backend_internet import set_external_network_access_allowed
 from ardupilot_methodic_configurator.data_model_parameter_editor import ParameterEditor
 from ardupilot_methodic_configurator.frontend_tkinter_base_window import BaseWindow
 from ardupilot_methodic_configurator.frontend_tkinter_parameter_editor_table import NEW_VALUE_DIFFERENT_STR
@@ -83,11 +84,14 @@ class _BaseWindowShell(Protocol):  # pylint: disable=too-few-public-methods
 
 @pytest.fixture(autouse=True)
 def test_environment() -> Generator[None, None, None]:
-    """Ensure consistent test environment for all Tkinter tests."""
+    """Ensure consistent test environment for GUI and mocked-network tests."""
     original_env = os.environ.get("PYTEST_CURRENT_TEST")
     os.environ["PYTEST_CURRENT_TEST"] = "true"
+    set_external_network_access_allowed(True)
 
     yield
+
+    set_external_network_access_allowed(None)
 
     if original_env is None:
         os.environ.pop("PYTEST_CURRENT_TEST", None)

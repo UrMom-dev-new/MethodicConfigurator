@@ -20,6 +20,18 @@ $DistDir    = Join-Path $Root "dist"
 $ExtractDir = Join-Path $DistDir "wheel_from_pypi"
 $PkgName    = "ardupilot_methodic_configurator"
 $Version    = "2.0.3"
+$NetworkEnvVar = "ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK"
+
+function Test-ExternalNetworkAllowed {
+    $value = [string]$env:ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK
+    return @("1", "true", "yes", "on") -contains $value.ToLowerInvariant()
+}
+
+function Require-ExternalNetwork {
+    if (-not (Test-ExternalNetworkAllowed)) {
+        throw "External network calls are disabled. Set $NetworkEnvVar=1 to allow downloads."
+    }
+}
 
 function Ensure-Venv {
     if (-not (Test-Path $ActivatePs)) {
@@ -63,6 +75,7 @@ function Ensure-Pip {
 }
 
 # 1) Ensure and activate venv
+Require-ExternalNetwork
 Ensure-Venv
 Activate-Venv
 

@@ -559,7 +559,7 @@ class TestSettingsFileOperations:
             assert result["display_usage_popup"]["component_editor"] is True  # Added
             assert result["display_usage_popup"]["parameter_editor"] is True  # Added
             assert result["display_usage_popup"]["log_quality_report"] is True  # Added
-            assert result["auto_open_doc_in_browser"] is True  # Added
+            assert result["auto_open_doc_in_browser"] is False  # Added
             assert result["annotate_docs_into_param_files"] is False  # Added
 
     def test_user_can_normalize_path_separators_for_platform(self) -> None:

@@ -29,6 +29,8 @@ VEHICLE_TYPES = [
 # Error messages
 ERR_USERNAME_NOT_SET = "RSYNC_USERNAME environment variable not set"
 ERR_PASSWORD_NOT_SET = "RSYNC_PASSWORD environment variable not set"  # noqa: S105
+ALLOW_EXTERNAL_NETWORK_ENV_VAR = "ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK"
+_EXTERNAL_NETWORK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 
 RSYNC_USERNAME = os.environ.get("RSYNC_USERNAME")
 if not RSYNC_USERNAME:
@@ -40,6 +42,12 @@ if not RSYNC_PASSWORD:
 
 # Store the current working directory
 old_cwd = os.getcwd()
+
+
+def external_network_access_enabled() -> bool:
+    """Return whether outbound network access has been explicitly enabled for this script."""
+    value = os.environ.get(ALLOW_EXTERNAL_NETWORK_ENV_VAR, "")
+    return value.strip().lower() in _EXTERNAL_NETWORK_TRUE_VALUES
 
 
 def ensure_dependencies() -> None:
@@ -55,6 +63,9 @@ def ensure_dependencies() -> None:
             .split("~=", maxsplit=1)[0]
         )
         if importlib.util.find_spec(module_name) is None:
+            if not external_network_access_enabled():
+                msg = f"External network calls are disabled. Set {ALLOW_EXTERNAL_NETWORK_ENV_VAR}=1 to install dependencies."
+                raise RuntimeError(msg)
             print(f"Installing required dependency: {package}")  # noqa: T201
             # This is safe as we're only installing known packages defined in the code
             subprocess.check_call([sys.executable, "-m", "pip", "install", package])  # noqa: S603
@@ -149,6 +160,10 @@ def create_one_pdef_xml_file(vehicle_type: str, dst_dir: str, git_tag: str) -> N
 # Function to sync files using rsync
 def sync_to_remote(vehicle_dir: str) -> None:
     """Sync files to the remote server using rsync."""
+    if not external_network_access_enabled():
+        msg = f"External network calls are disabled. Set {ALLOW_EXTERNAL_NETWORK_ENV_VAR}=1 to sync metadata."
+        raise RuntimeError(msg)
+
     src_dir = f"{vehicle_dir}/"
     dst_host = "firmware.ardupilot.org"
     dst_path = f"param_versioned/{vehicle_dir}/"
@@ -170,6 +185,12 @@ def sync_to_remote(vehicle_dir: str) -> None:
 
 def main() -> None:
     """Main function to generate and sync parameter definition XML files."""
+    if not external_network_access_enabled():
+        print(  # noqa: T201
+            f"External network calls are disabled. Set {ALLOW_EXTERNAL_NETWORK_ENV_VAR}=1 to generate and sync metadata."
+        )
+        return
+
     # Ensure required dependencies are installed
     ensure_dependencies()
 

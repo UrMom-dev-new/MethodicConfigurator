@@ -185,6 +185,36 @@ class TestDocumentationInteractionBehavior:
         documentation_frame.auto_open_var.set(False)
         assert documentation_frame.get_auto_open_documentation_in_browser() is False
 
+    def test_auto_open_documentation_stays_disabled_without_external_network_opt_in(self, mock_parameter_editor) -> None:
+        """
+        Auto-open documentation cannot bypass local-only mode.
+
+        GIVEN: A stored setting asks to auto-open browser documentation
+        AND: External network calls are disabled
+        WHEN: The documentation frame checks whether to auto-open
+        THEN: It returns False
+        """
+        root = tk.Tk()
+        try:
+            with (
+                patch(
+                    "ardupilot_methodic_configurator.frontend_tkinter_parameter_editor_documentation_frame."
+                    "external_network_access_enabled",
+                    return_value=False,
+                ),
+                patch(
+                    "ardupilot_methodic_configurator.frontend_tkinter_parameter_editor_documentation_frame."
+                    "ProgramSettings.get_setting",
+                    side_effect=lambda key: True if key == "auto_open_doc_in_browser" else "normal",
+                ),
+            ):
+                frame = DocumentationFrame(root, mock_parameter_editor)
+                frame.auto_open_var.set(True)
+
+                assert frame.get_auto_open_documentation_in_browser() is False
+        finally:
+            root.destroy()
+
 
 class TestDocumentationUpdateBehavior:
     """Test how documentation updates when configuration changes."""

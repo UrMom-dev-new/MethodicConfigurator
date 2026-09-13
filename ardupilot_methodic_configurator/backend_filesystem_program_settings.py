@@ -173,7 +173,7 @@ class ProgramSettings:  # pylint: disable=too-many-public-methods
                 "template_dir": os_path.join(cls.get_templates_base_dir(), "ArduCopter", "empty_4.6.x"),
                 "new_base_dir": os_path.join(settings_directory, "vehicles"),
             },
-            "auto_open_doc_in_browser": True,
+            "auto_open_doc_in_browser": False,
             "annotate_docs_into_param_files": False,
             "gui_complexity": "simple",  # simple or normal
             # Motor test settings

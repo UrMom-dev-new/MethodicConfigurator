@@ -43,6 +43,48 @@ from ardupilot_methodic_configurator import _
 GITHUB_API_URL_RELEASES = "https://api.github.com/repos/ArduPilot/MethodicConfigurator/releases/"
 DOWNLOAD_BLOCK_SIZE = 8192
 PE_MAGIC_BYTES = b"MZ"  # Windows PE executable DOS header signature
+ALLOW_EXTERNAL_NETWORK_ENV_VAR = "ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK"
+_EXTERNAL_NETWORK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
+_LOCAL_URL_SCHEMES = frozenset({"", "file"})
+_external_network_access_allowed: bool | None = None
+
+
+def set_external_network_access_allowed(allowed: bool | None) -> None:
+    """Set a process-local override for outbound network/browser URL access."""
+    global _external_network_access_allowed  # noqa: PLW0603  # pylint: disable=global-statement
+    _external_network_access_allowed = allowed
+
+
+def external_network_access_enabled() -> bool:
+    """Return whether outbound network/browser URL access has been explicitly enabled."""
+    if _external_network_access_allowed is not None:
+        return _external_network_access_allowed
+    value = os.environ.get(ALLOW_EXTERNAL_NETWORK_ENV_VAR, "")
+    return value.strip().lower() in _EXTERNAL_NETWORK_TRUE_VALUES
+
+
+def _is_external_url(url: str) -> bool:
+    """Return True when *url* points outside the local machine or filesystem."""
+    parsed = urlparse(url.strip())
+    return parsed.scheme.lower() not in _LOCAL_URL_SCHEMES
+
+
+def _external_network_disabled_message(action: str, url: str = "") -> str:
+    target = f" {url}" if url else ""
+    return _(
+        "External network call blocked: %(action)s%(target)s. "
+        "Set %(env_var)s=1 or launch with --allow-external-network-calls to enable it explicitly."
+    ) % {"action": action, "target": target, "env_var": ALLOW_EXTERNAL_NETWORK_ENV_VAR}
+
+
+def _external_network_call_allowed(action: str, url: str = "") -> bool:
+    """Return True when an outbound action is allowed, logging the block otherwise."""
+    if url and not _is_external_url(url):
+        return True
+    if external_network_access_enabled():
+        return True
+    logging_warning("%s", _external_network_disabled_message(action, url))
+    return False
 
 
 def _build_proxies() -> dict[str, str]:
@@ -206,6 +248,8 @@ def download_file_from_url(  # pylint: disable=too-many-arguments, too-many-posi
     if not url or not local_filename:
         logging_error(_("URL or local filename not provided."))
         return False
+    if not _external_network_call_allowed("download file", url):
+        return False
 
     proxies = _build_proxies()
     os.makedirs(os.path.dirname(os.path.abspath(local_filename)), exist_ok=True)
@@ -272,6 +316,8 @@ def get_release_info(name: str, should_be_pre_release: bool, timeout: int = 30) 
 
     try:
         url = urljoin(GITHUB_API_URL_RELEASES, name.lstrip("/"))
+        if not _external_network_call_allowed("fetch release info", url):
+            raise requests_RequestException(_external_network_disabled_message("fetch release info", url))
         response = requests_get(url, timeout=timeout, verify=_get_verify_param(), headers=_get_github_api_headers())
         response.raise_for_status()
 
@@ -329,6 +375,8 @@ def get_expected_sha256_from_release(release_info: dict[str, Any], filename: str
             url = asset.get("browser_download_url")
             if not url:
                 continue
+            if not _external_network_call_allowed("fetch checksum", url):
+                return None
             try:
                 resp = requests_get(url, timeout=timeout, verify=_get_verify_param())
                 resp.raise_for_status()
@@ -479,6 +527,8 @@ def download_and_install_on_windows(
     """
     # Validate URL is from trusted GitHub source
     if not _validate_github_url(download_url):
+        return False
+    if not _external_network_call_allowed("download Windows installer", download_url):
         return False
 
     logging_info(_("Downloading and installing new version for Windows..."))
@@ -638,6 +688,8 @@ def download_and_install_on_macos(
     """
     if not _validate_github_url(download_url):
         return False
+    if not _external_network_call_allowed("download macOS installer", download_url):
+        return False
 
     logging_info(_("Downloading and installing new version for macOS..."))
 
@@ -676,6 +728,9 @@ def download_and_install_on_macos(
 
 def download_and_install_pip_release(progress_callback: Callable[[float, str], None] | None = None) -> int:
     """Download and install the latest release via pip/uv from PyPI."""
+    if not _external_network_call_allowed("update package from PyPI"):
+        return 1
+
     if progress_callback:
         progress_callback(0.0, _("Starting installation..."))
 
@@ -751,6 +806,8 @@ def verify_and_open_url(url: str) -> bool:
     if not url:
         logging_error(_("URL not provided."))
         return False
+    if not _external_network_call_allowed("verify and open URL", url):
+        return False
 
     logging_debug(_("Verifying URL: %s"), url)
     url_found: bool = False
@@ -793,4 +850,6 @@ def webbrowser_open_url(url: str, new: int = 0, autoraise: bool = True) -> bool:
         autoraise: Whether to raise the window
 
     """
+    if not _external_network_call_allowed("open URL in browser", url):
+        return False
     return webbrowser_open(url=url, new=new, autoraise=autoraise)

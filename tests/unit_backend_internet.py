@@ -24,6 +24,7 @@ from requests import RequestException as requests_RequestException
 from requests import Timeout as requests_Timeout
 
 from ardupilot_methodic_configurator.backend_internet import (
+    ALLOW_EXTERNAL_NETWORK_ENV_VAR,
     _get_verify_param,
     _install_app_from_mount,
     _mount_dmg,
@@ -34,11 +35,53 @@ from ardupilot_methodic_configurator.backend_internet import (
     download_and_install_on_windows,
     download_and_install_pip_release,
     download_file_from_url,
+    external_network_access_enabled,
     get_release_info,
+    set_external_network_access_allowed,
     verify_and_open_url,
+    webbrowser_open_url,
 )
 
 # pylint: disable=unused-argument, too-many-lines, redefined-outer-name
+
+
+def test_external_network_access_disabled_by_default(monkeypatch) -> None:
+    set_external_network_access_allowed(None)
+    monkeypatch.delenv(ALLOW_EXTERNAL_NETWORK_ENV_VAR, raising=False)
+
+    assert not external_network_access_enabled()
+
+
+def test_external_network_access_enabled_by_environment(monkeypatch) -> None:
+    set_external_network_access_allowed(None)
+    monkeypatch.setenv(ALLOW_EXTERNAL_NETWORK_ENV_VAR, "1")
+
+    assert external_network_access_enabled()
+
+
+@patch("ardupilot_methodic_configurator.backend_internet.requests_get")
+def test_download_file_from_url_blocks_external_url_when_network_disabled(mock_get, tmp_path) -> None:
+    set_external_network_access_allowed(False)
+
+    assert not download_file_from_url("https://example.com/file", str(tmp_path / "file"))
+    mock_get.assert_not_called()
+
+
+@patch("ardupilot_methodic_configurator.backend_internet.requests_get")
+def test_get_release_info_blocks_external_url_when_network_disabled(mock_get) -> None:
+    set_external_network_access_allowed(False)
+
+    with pytest.raises(requests_RequestException):
+        get_release_info("latest", should_be_pre_release=False)
+    mock_get.assert_not_called()
+
+
+@patch("ardupilot_methodic_configurator.backend_internet.webbrowser_open")
+def test_webbrowser_open_url_blocks_external_url_when_network_disabled(mock_webbrowser_open) -> None:
+    set_external_network_access_allowed(False)
+
+    assert not webbrowser_open_url("https://example.com")
+    mock_webbrowser_open.assert_not_called()
 
 
 def test_download_file_from_url_empty_params() -> None:

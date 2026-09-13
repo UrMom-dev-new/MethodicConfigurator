@@ -28,6 +28,7 @@ from ardupilot_methodic_configurator import _
 from ardupilot_methodic_configurator import __version__ as current_version
 from ardupilot_methodic_configurator.backend_filesystem import LocalFilesystem
 from ardupilot_methodic_configurator.backend_internet import (
+    ALLOW_EXTERNAL_NETWORK_ENV_VAR,
     download_and_install_on_macos,
     download_and_install_on_windows,
     download_and_install_pip_release,
@@ -164,9 +165,26 @@ class UpdateManager:
     @staticmethod
     def add_argparse_arguments(parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument(
+            "--allow-external-network-calls",
+            action="store_true",
+            help=_(
+                "Allow explicit outbound internet/browser URL actions. "
+                "Default is %(default)s, keeping the application local-only."
+            ),
+        )
+        parser.add_argument(
+            "--check-for-updates",
+            action="store_true",
+            help=_(
+                "Opt in to checking GitHub for software updates. Requires %(env_var)s=1 or "
+                "--allow-external-network-calls. Default is %%(default)s."
+            )
+            % {"env_var": ALLOW_EXTERNAL_NETWORK_ENV_VAR},
+        )
+        parser.add_argument(
             "--skip-check-for-updates",
             action="store_true",
-            help=_("Skip check for software updates before staring the software. Default is %(default)s."),
+            help=_("Compatibility option; software update checks are skipped by default. Default is %(default)s."),
         )
         return parser
 

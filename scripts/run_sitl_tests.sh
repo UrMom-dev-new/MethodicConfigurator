@@ -23,6 +23,27 @@ NC='\033[0m' # No Color
 # Configuration
 ARDUPILOT_DIR="${ARDUPILOT_DIR:-$HOME/ardupilot-sitl}"
 SITL_BINARY="${ARDUPILOT_DIR}/ardupilot/build/sitl/bin/arducopter"
+NETWORK_ACCESS_ENV_VAR="ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK"
+
+network_access_allowed() {
+    case "${ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+require_network_access() {
+    if network_access_allowed; then
+        return 0
+    fi
+
+    echo -e "${RED}✗ External network calls are disabled. Set ${NETWORK_ACCESS_ENV_VAR}=1 to allow downloads.${NC}"
+    return 1
+}
 
 echo -e "${GREEN}ArduPilot SITL Testing Setup${NC}"
 echo "================================="
@@ -58,6 +79,7 @@ setup_sitl() {
         cp "$PROJECT_ROOT/sitl/arducopter" "$PROJECT_ROOT/sitl-cache/"
         # Download default parameters if not already present
         if [ ! -f "$PROJECT_ROOT/sitl/copter.parm" ]; then
+            require_network_access || return 1
             curl -L -o "$PROJECT_ROOT/sitl/copter.parm" https://raw.githubusercontent.com/ArduPilot/ardupilot/master/Tools/autotest/default_params/copter.parm
         fi
         cp "$PROJECT_ROOT/sitl/copter.parm" "$PROJECT_ROOT/sitl-cache/"
@@ -104,6 +126,7 @@ cleanup_sitl() {
 # Download ArduCopter SITL from official firmware server
 download_sitl() {
     echo "Downloading ArduCopter SITL from official firmware server..."
+    require_network_access || return 1
 
     # Create SITL directory
     mkdir -p "$PROJECT_ROOT/sitl"

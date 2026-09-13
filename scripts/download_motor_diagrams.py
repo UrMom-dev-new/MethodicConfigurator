@@ -12,12 +12,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import logging
+import os
 import urllib.request
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlparse
 
 from batch_convert_motor_diagrams import DEFAULT_RESIZE_HEIGHT, DEFAULT_RESIZE_WIDTH, batch_convert_and_compare
+
+ALLOW_EXTERNAL_NETWORK_ENV_VAR = "ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK"
+_EXTERNAL_NETWORK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def external_network_access_enabled() -> bool:
+    """Return whether outbound network access has been explicitly enabled for this script."""
+    value = os.environ.get(ALLOW_EXTERNAL_NETWORK_ENV_VAR, "")
+    return value.strip().lower() in _EXTERNAL_NETWORK_TRUE_VALUES
+
 
 # List of all motor diagram SVG files from the ArduPilot documentation at
 # https://ardupilot.org/copter/docs/connect-escs-and-motors.html
@@ -90,6 +101,12 @@ def download_motor_diagrams() -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger(__name__)
+    if not external_network_access_enabled():
+        logger.error(
+            "External network calls are disabled. Set %s=1 to download motor diagrams.",
+            ALLOW_EXTERNAL_NETWORK_ENV_VAR,
+        )
+        return
 
     for filename in motor_diagrams:
         try:

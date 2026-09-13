@@ -18,11 +18,10 @@ from logging import getLevelName as logging_getLevelName
 from logging import info as logging_info
 from typing import Any
 
-# import time
-import requests
 from pymavlink import mavutil
 
 import ardupilot_methodic_configurator.backend_mavftp as mavftp
+from ardupilot_methodic_configurator.backend_internet import download_file_from_url
 
 old_mavftp_member_variable_values: dict[str, Any] = {}
 
@@ -160,13 +159,7 @@ def get_last_log(mav_ftp: mavftp.MAVFTP) -> None:
 
 
 def download_script(url: str, local_filename: str) -> None:
-    # Download the script from the internet to the PC
-    response = requests.get(url, timeout=5)
-
-    if response.status_code == 200:
-        with open(local_filename, "wb") as file:
-            file.write(response.content)
-    else:
+    if not download_file_from_url(url, local_filename, timeout=5):
         logging_error("Failed to download the file")
 
 
