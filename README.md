@@ -21,6 +21,7 @@ But for those it is still very incomplete.
 - **Parameter management**: Upload, download, and edit parameters with full documentation
 - **Vehicle templates**: Start from empty templates or from pre-configured settings for common vehicle types
 - **Traceability**: Documents every parameter change with reasons
+- **Local-first privacy**: Runs without outbound internet or browser calls unless external network access is explicitly enabled
 
 Here are some YouTube video tutorials from the [AMC YouTube Channel](https://www.youtube.com/@AmilcardoCarmoLucas):
 
@@ -75,6 +76,7 @@ No visible menus, no hidden menus, no complicated options, what you see is what 
 - [Quick Start](#quick-start)
   - [What You'll Accomplish](#what-youll-accomplish)
   - [Important Tips for Success](#important-tips-for-success)
+- [Privacy and Local-Only Operation](#privacy-and-local-only-operation)
 - [1. Quick overview of the entire process](#1-quick-overview-of-the-entire-process)
   - [1.1 Select the vehicle components](#11-select-the-vehicle-components)
   - [1.2 Download and install software](#12-download-and-install-software)
@@ -123,6 +125,40 @@ By the end of this process, your flight controller will be fully configured with
 - **Ignoring warnings**: Red backgrounds and error messages are there for your safety
 - **Forgetting calibrations**: Some parameters require physical calibration procedures:
   - IMU temperature, analog voltage and current measurement, gyro, accelerometers
+
+## Privacy and Local-Only Operation
+
+ArduPilot Methodic Configurator runs local-only by default. The application does not make outbound internet requests,
+open external browser URLs, check GitHub for updates, download installer packages, or run helper-script network downloads
+unless you opt in.
+
+In this mode, vehicle data, parameter files, logs, and project files stay on the local machine unless you manually share
+them outside the application.
+
+Local vehicle configuration, local file handling, and direct communication with your flight controller continue to work
+without enabling external network access. External links remain visible as references, but automatic browser opening is
+disabled by default.
+
+To explicitly allow external network actions for a session, start the application with:
+
+```bash
+ardupilot_methodic_configurator --allow-external-network-calls
+```
+
+Software update checks are also opt-in and require network access:
+
+```bash
+ardupilot_methodic_configurator --allow-external-network-calls --check-for-updates
+```
+
+For helper scripts and automated environments, set the environment variable instead:
+
+```bash
+ARDUPILOT_METHODIC_CONFIGURATOR_ALLOW_NETWORK=1 ardupilot_methodic_configurator --check-for-updates
+```
+
+Accepted true values are `1`, `true`, `yes`, and `on`. The existing `--skip-check-for-updates` option is still accepted
+for compatibility, but update checks are skipped by default.
 
 ## 1. Quick overview of the entire process
 
