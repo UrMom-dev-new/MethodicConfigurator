@@ -76,6 +76,7 @@ No visible menus, no hidden menus, no complicated options, what you see is what 
 - [Quick Start](#quick-start)
   - [What You'll Accomplish](#what-youll-accomplish)
   - [Important Tips for Success](#important-tips-for-success)
+- [Install and Run](#install-and-run)
 - [Privacy and Local-Only Operation](#privacy-and-local-only-operation)
 - [1. Quick overview of the entire process](#1-quick-overview-of-the-entire-process)
   - [1.1 Select the vehicle components](#11-select-the-vehicle-components)
@@ -126,6 +127,79 @@ By the end of this process, your flight controller will be fully configured with
 - **Forgetting calibrations**: Some parameters require physical calibration procedures:
   - IMU temperature, analog voltage and current measurement, gyro, accelerometers
 
+## Install and Run
+
+ArduPilot Methodic Configurator can be installed from the packaged GitHub release, from PyPI, or directly from source.
+The application requires Python 3.10 or newer when installed with Python tooling.
+
+### Windows
+
+1. Open the [latest GitHub release](https://github.com/ArduPilot/MethodicConfigurator/releases/latest).
+2. In **Assets**, download `ardupilot_methodic_configurator_x.x.x_windows_setup.exe`.
+3. Run the installer, choose your language, accept the license, and create a desktop shortcut if desired.
+4. Launch **ArduPilot Methodic Configurator** from the desktop shortcut or Start menu.
+
+The `.sig`, `.bundle`, and `.intoto.jsonl` files are verification files. Download them only if you want to verify the
+installer before running it.
+
+### macOS
+
+1. Open the [latest GitHub release](https://github.com/ArduPilot/MethodicConfigurator/releases/latest).
+2. In **Assets**, download `ardupilot_methodic_configurator_x.x.x_macos_setup.dmg`.
+3. Open the `.dmg`, drag **ArduPilot Methodic Configurator** into **Applications**, and eject the installer volume.
+4. Launch **ArduPilot Methodic Configurator** from **Applications** or Spotlight.
+
+### Linux
+
+Install Tkinter, create a virtual environment, install the package, and run the command-line entry point:
+
+```bash
+sudo apt install python3-tk python3-venv
+python3 -m venv .ardupilot_methodic_configurator_venv
+source .ardupilot_methodic_configurator_venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install ardupilot_methodic_configurator
+ardupilot_methodic_configurator
+```
+
+On non-Debian Linux distributions, install the equivalent Python Tk package before running the `pip install` command.
+
+### Run from Source
+
+Use this path when you want to develop the project or test the current repository checkout:
+
+```bash
+git clone https://github.com/ArduPilot/MethodicConfigurator.git
+cd MethodicConfigurator
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+ardupilot_methodic_configurator
+```
+
+On Windows PowerShell, replace the virtual environment activation command with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+### First Launch
+
+1. Start the application.
+2. Create a new vehicle project from the closest template, or open an existing vehicle project.
+3. Connect the flight controller with a USB data cable when you are ready to read or upload parameters.
+4. Follow the configuration steps in order, reviewing each parameter and documenting the reason for every change.
+
+Run `ardupilot_methodic_configurator --help` to see all command-line options.
+
+By default, the application runs local-only and does not make external network calls. To explicitly enable internet-backed
+features such as update checks for a session, run:
+
+```bash
+ardupilot_methodic_configurator --allow-external-network-calls --check-for-updates
+```
+
 ## Privacy and Local-Only Operation
 
 ArduPilot Methodic Configurator runs local-only by default. The application does not make outbound internet requests,
@@ -174,9 +248,7 @@ To methodically build, configure and tune ArduPilot vehicles follow this sequenc
 
 ### 1.2 Download and install software
 
-- Install ArduPilot Methodic Configurator on [MS windows](https://ardupilot.github.io/MethodicConfigurator/INSTALL.html#ms-windows-installation),
-  [Linux](https://ardupilot.github.io/MethodicConfigurator/INSTALL.html#linux-installation) or
-  [macOS](https://ardupilot.github.io/MethodicConfigurator/INSTALL.html#macos-installation)
+- [Install and run ArduPilot Methodic Configurator](#install-and-run)
 - [Install the latest Mission Planner version](https://ardupilot.github.io/MethodicConfigurator/INSTALL.html#install-mission-planner-software-on-a-pc-or-mac)
 - [Install the latest ArduPilot firmware on your flight controller board](https://ardupilot.github.io/MethodicConfigurator/INSTALL.html#install-ardupilot-firmware-on-the-flight-controller)
 
